@@ -18,6 +18,10 @@ The method is applied here to analyze **Ansible** release metrics and identify a
 The ADDaMM model is based on estimating the probability density of the known data using KDE. By learning the density of samples in a specific class, the model can assign likelihood scores to new samples. Based on these likelihoods, we define thresholds that differentiate between **normal** and **anomalous** data points:
 - **High Threshold:** Samples above this likelihood are considered valid members of the class.
 - **Low Threshold:** Samples below this likelihood are considered anomalous or novel.
+- **Low Threshold - High Threshold:** Samples within this range are considered **uncertain** or **doubtful cases**. This is particularly useful in situations where classes are difficult to separate or overlap. In such cases, the model can identify samples that don't strongly belong to either class, offering insight into potential ambiguities.
+
+In simpler cases, where class separation is clearer, you can opt for the **Simplified ADDaMM** model, which relies on a single threshold to detect anomalies, making it more efficient and straightforward to apply.
+
 
 ### **Steps:**
 1. **Train ADDaMM on a known class:** We train the KDE model on a set of known class data to capture the distribution.

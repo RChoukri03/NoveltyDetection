@@ -46,13 +46,13 @@ def loadAndProcessData(releaseType, metricFunction):
     return Xpos, Xneg
 
 # Function to save the confusion matrix as an image
-def saveConfusionMatrix(yTrue, yPred, filePath):
+def saveConfusionMatrix(yTrue, yPred, filePath,releaseType):
     cm = confusion_matrix(yTrue, yPred)
     plt.figure(figsize=(10, 7))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
-    plt.title('Confusion Matrix')
+    plt.title(f'Confusion Matrix {releaseType}')
     plt.savefig(filePath)
     logger.info(f"Confusion matrix saved as {filePath}")
 
@@ -74,7 +74,7 @@ def evaluateModel(Xpos, Xneg, releaseType):
     yPredTest = np.where(logProbTest < 0, 1, 0)  # 1 = outliers, 0 = inliers
     
     # Save confusion matrix as image
-    saveConfusionMatrix(yTest, yPredTest, f'datasets/ansible/confusion_matrix_test_{releaseType}.png')
+    saveConfusionMatrix(yTest, yPredTest, f'datasets/ansible/confusion_matrix_test_{releaseType}.png',releaseType)
     
     # Calculate and log performance metrics
     accuracy = accuracy_score(yTest, yPredTest)

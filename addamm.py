@@ -79,5 +79,5 @@ class SimplifiedADDaMM:
         self.kde.fit(X)
 
     def detect(self, x):
-        log_prob = self.kde.score_samples(x)
-        return log_prob
+        logProb = self.kde.score_samples(x)
+        return logProb

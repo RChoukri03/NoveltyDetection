@@ -4,38 +4,36 @@ import logging
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import QuantileTransformer, StandardScaler
+from sklearn.preprocessing import QuantileTransformer
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score, precision_score, recall_score, f1_score
-from addamm import SimplifiedADDaMM 
+from addamm import SimplifiedADDaMM
 
-# Configuration du logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Charger le fichier CSV
+# Load dataset from CSV
 def loadDataFromCsv(filePath):
     df = pd.read_csv(filePath, sep=",")
-    X = df.drop(columns=['Class']) #, 'Time'
+    X = df.drop(columns=['Class'])  # Drop target column
     y = df['Class']
     logger.info(f"Loaded dataset with {len(X)} samples.")
     return X, y
 
-# Appliquer les scalers
+# Apply scalers to the dataset
 def preprocessData(X):
     logger.info("Starting data preprocessing...")
     quantileScaler = QuantileTransformer(output_distribution='normal')
-    # standardScaler = StandardScaler()
-
-    # Désactiver le prétraitement pour le moment
+    
+    # Optionally preprocess the data
     # X = quantileScaler.fit_transform(X)
-    # X = standardScaler.fit_transform(X)
     logger.info("Data preprocessing completed.")
     
     return X
 
-# Fonction pour enregistrer la matrice de confusion en tant qu'image
-def saveConfusionMatrix(y_true, y_pred, filePath):
-    cm = confusion_matrix(y_true, y_pred)
+# Save confusion matrix as an image
+def saveConfusionMatrix(yTrue, yPred, filePath):
+    cm = confusion_matrix(yTrue, yPred)
     plt.figure(figsize=(10, 7))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False)
     plt.xlabel('Predicted')
@@ -44,14 +42,14 @@ def saveConfusionMatrix(y_true, y_pred, filePath):
     plt.savefig(filePath)
     logger.info(f"Confusion matrix saved as {filePath}")
 
-# Fonction pour tracer les scores de vraisemblance
+# Plot likelihood scores
 def plotScores(X, y, scores, filePath):
     plt.figure(figsize=(14, 7))
-    inliers_idx = y == 0
-    outliers_idx = y == 1
+    inliersIdx = y == 0
+    outliersIdx = y == 1
 
-    plt.plot(np.where(inliers_idx)[0], scores[inliers_idx], 'o', label='Inliers')
-    plt.plot(np.where(outliers_idx)[0], scores[outliers_idx], 'ro', label='Outliers')
+    plt.plot(np.where(inliersIdx)[0], scores[inliersIdx], 'o', label='Inliers')
+    plt.plot(np.where(outliersIdx)[0], scores[outliersIdx], 'ro', label='Outliers')
     plt.axhline(y=0, color='black', linestyle='--')
     plt.xlabel('Sample index')
     plt.ylabel('Log Likelihood Score')
@@ -60,89 +58,85 @@ def plotScores(X, y, scores, filePath):
     plt.savefig(filePath)
     logger.info(f"Log likelihood scores plot saved as {filePath}")
 
-# Évaluation du modèle
+# Evaluate the model performance
 def evaluateModel(X, y):
     logger.info("Starting model evaluation...")
     
-    # Isoler les outliers et séparer les inliers en ensembles d'entraînement et de test
-    outliers_idx = y == 1
-    inliers_idx = y == 0
-    X_outliers = X[outliers_idx]
-    y_outliers = y[outliers_idx]
-    X_inliers = X[inliers_idx]
-    y_inliers = y[inliers_idx]
+    # Separate inliers and outliers
+    outliersIdx = y == 1
+    inliersIdx = y == 0
+    XOutliers = X[outliersIdx]
+    yOutliers = y[outliersIdx]
+    XInliers = X[inliersIdx]
+    yInliers = y[inliersIdx]
     
-    # Split les inliers en train et test
-    X_train, X_test_inliers, y_train, y_test_inliers = train_test_split(X_inliers, y_inliers, test_size=0.1, random_state=42)
+    # Split inliers into train and test sets
+    XTrain, XTestInliers, yTrain, yTestInliers = train_test_split(XInliers, yInliers, test_size=0.1, random_state=42)
     
-    # Ajouter les outliers à l'ensemble de test
-    X_test = np.vstack([X_test_inliers, X_outliers])
-    y_test = np.hstack([y_test_inliers, y_outliers])
+    # Add outliers to the test set
+    XTest = np.vstack([XTestInliers, XOutliers])
+    yTest = np.hstack([yTestInliers, yOutliers])
     
     # Initialize and fit the ADDaMM model
     model = SimplifiedADDaMM(bandwidth=0.06)
-    model.fit(X_train)
-    logger.info("Model fitted, start Testing ...")
+    model.fit(XTrain)
+    logger.info("Model fitted, starting testing...")
+    
     # Make predictions on the test set
-    log_prob_test = model.detect(np.array(X_test))
-    y_pred_test = np.where(log_prob_test < 0, 1, 0)
+    logProbTest = model.detect(np.array(XTest))
+    yPredTest = np.where(logProbTest < 0, 1, 0)
     
     # Make predictions on the training set
-    log_prob_train = model.detect(X_train)
-    y_pred_train = np.where(log_prob_train < 0, 1, 0)
+    logProbTrain = model.detect(XTrain)
+    yPredTrain = np.where(logProbTrain < 0, 1, 0)
     
-    # Save confusion matrix as image
-    saveConfusionMatrix(y_test, y_pred_test, 'confusion_matrix_test.png')
-    saveConfusionMatrix(y_train, y_pred_train, 'confusion_matrix_train.png')
+    # Save confusion matrices as images
+    saveConfusionMatrix(yTest, yPredTest, 'confusion_matrix_test.png')
+    saveConfusionMatrix(yTrain, yPredTrain, 'confusion_matrix_train.png')
     
     # Plot log likelihood scores
-    plotScores(X_test, y_test, log_prob_test, 'log_likelihood_scores.png')
+    plotScores(XTest, yTest, logProbTest, 'log_likelihood_scores.png')
     
-    # Calculate and log metrics for the test set
-    accuracy = accuracy_score(y_test, y_pred_test)
-    precision = precision_score(y_test, y_pred_test)
-    recall = recall_score(y_test, y_pred_test)
-    f1 = f1_score(y_test, y_pred_test)
+    # Log performance metrics for the test set
+    accuracy = accuracy_score(yTest, yPredTest)
+    precision = precision_score(yTest, yPredTest)
+    recall = recall_score(yTest, yPredTest)
+    f1 = f1_score(yTest, yPredTest)
     
     logger.info(f"Test Data - Accuracy: {accuracy}")
     logger.info(f"Test Data - Precision: {precision}")
     logger.info(f"Test Data - Recall: {recall}")
     logger.info(f"Test Data - F1 Score: {f1}")
-    
-    # Print classification report
     logger.info("Test Data - Classification Report:")
-    logger.info(classification_report(y_test, y_pred_test))
+    logger.info(classification_report(yTest, yPredTest))
     
-    # Calculate and log metrics for the training set
-    accuracy_train = accuracy_score(y_train, y_pred_train)
-    precision_train = precision_score(y_train, y_pred_train)
-    recall_train = recall_score(y_train, y_pred_train)
-    f1_train = f1_score(y_train, y_pred_train)
+    # Log performance metrics for the training set
+    accuracyTrain = accuracy_score(yTrain, yPredTrain)
+    precisionTrain = precision_score(yTrain, yPredTrain)
+    recallTrain = recall_score(yTrain, yPredTrain)
+    f1Train = f1_score(yTrain, yPredTrain)
     
-    logger.info(f"Train Data - Accuracy: {accuracy_train}")
-    logger.info(f"Train Data - Precision: {precision_train}")
-    logger.info(f"Train Data - Recall: {recall_train}")
-    logger.info(f"Train Data - F1 Score: {f1_train}")
-    
-    # Print classification report
+    logger.info(f"Train Data - Accuracy: {accuracyTrain}")
+    logger.info(f"Train Data - Precision: {precisionTrain}")
+    logger.info(f"Train Data - Recall: {recallTrain}")
+    logger.info(f"Train Data - F1 Score: {f1Train}")
     logger.info("Train Data - Classification Report:")
-    logger.info(classification_report(y_train, y_pred_train))
+    logger.info(classification_report(yTrain, yPredTrain))
 
-# Fonction principale
+# Main function
 def main(filePath):
     logger.info("Loading data from CSV...")
     X, y = loadDataFromCsv(filePath)
     
     logger.info("Preprocessing data...")
-    X_scaled = preprocessData(X)
+    XScaled = preprocessData(X)
     
     logger.info("Evaluating model...")
-    evaluateModel(X_scaled, y)
+    evaluateModel(XScaled, y)
     
     logger.info("Script completed successfully.")
 
-# Exécution du script
+# Run the script
 if __name__ == "__main__":
-    filePath = 'datasets/KDD2014_donors_10feat_nomissing_normalised.csv'  # Remplacez par le chemin vers votre fichier CSV
+    filePath = 'datasets/KDD2014_donors_10feat_nomissing_normalised.csv'  # Replace with your CSV file path
     main(filePath)
-

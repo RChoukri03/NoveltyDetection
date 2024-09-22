@@ -58,5 +58,7 @@ A confusion matrix is generated and saved for each evaluation to visually repres
 The ADDaMM method has been tested on the **Ansible Defects Prediction** dataset, which contains metrics from Ansible playbooks. For more information on this dataset, you can visit the following link:
 [Ansible Defects Prediction Dataset on Kaggle](https://www.kaggle.com/datasets/stefadp/ansibledefectsprediction).
 
+The performance of the ADDaMM method surpasses all the results recorded in the Kaggle competition by the person who launched it: [Ansible Novelty Detection Dataset](https://www.kaggle.com/datasets/stefadp/ansiblenoveltydetection/code).
+
 However, the ADDaMM method is generalizable and can be applied to any dataset where novelty detection is required. Simply provide your dataset, preprocess it accordingly, and the method can help identify novel or anomalous data points.
 
